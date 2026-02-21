@@ -56,7 +56,7 @@ export function StudentSidebar() {
       </SidebarContent>
 
       <SidebarFooter className="border-t border-sidebar-border p-3">
-        <Tooltip>
+        <Tooltip delayDuration={200}>
           <TooltipTrigger asChild>
             <button
               onClick={signOut}
@@ -66,8 +66,9 @@ export function StudentSidebar() {
               <span>Sign Out</span>
             </button>
           </TooltipTrigger>
-          <TooltipContent side="right" className="text-xs">
-            {user?.email ?? "Unknown account"}
+          <TooltipContent side="right" sideOffset={8} className="text-xs max-w-[200px]">
+            <p className="font-medium">Signed in as:</p>
+            <p className="text-muted-foreground break-all">{user?.email ?? "Unknown account"}</p>
           </TooltipContent>
         </Tooltip>
       </SidebarFooter>
