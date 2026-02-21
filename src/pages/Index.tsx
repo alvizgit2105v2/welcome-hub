@@ -1,6 +1,7 @@
 import { motion } from "framer-motion";
 import { GraduationCap, Presentation } from "lucide-react";
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 
 const roles = [
   {
@@ -69,6 +70,7 @@ const RoleCard = ({
 
 const Index = () => {
   const [selectedRole, setSelectedRole] = useState<string | null>(null);
+  const navigate = useNavigate();
 
   return (
     <div className="gradient-mesh flex min-h-screen flex-col items-center justify-center px-4">
@@ -105,7 +107,7 @@ const Index = () => {
               <RoleCard
                 role={role}
                 isSelected={selectedRole === role.id}
-                onSelect={() => setSelectedRole(role.id)}
+                onSelect={() => navigate(`/auth?role=${role.id}`)}
               />
             </motion.div>
           ))}
@@ -113,7 +115,10 @@ const Index = () => {
 
         <p className="mt-8 text-xs text-muted-foreground">
           Already have an account?{" "}
-          <button className="font-medium text-primary underline-offset-4 hover:underline">
+          <button
+            onClick={() => navigate("/auth?role=student")}
+            className="font-medium text-primary underline-offset-4 hover:underline"
+          >
             Sign in
           </button>
         </p>
