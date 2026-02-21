@@ -69,10 +69,11 @@ const Auth = () => {
           title: "Account created!",
           description: "Check your email to verify your account.",
         });
+        navigate(role === "instructor" ? "/" : "/student");
       } else {
         const { error } = await supabase.auth.signInWithPassword({ email, password });
         if (error) throw error;
-        navigate("/");
+        navigate(role === "instructor" ? "/" : "/student");
       }
     } catch (error: any) {
       toast({
