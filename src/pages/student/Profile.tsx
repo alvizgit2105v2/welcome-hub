@@ -14,24 +14,14 @@ import {
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { User, BookOpen, Save, Loader2, Mail } from "lucide-react";
 
-const PROGRAMS = [
-  "Computer Science",
-  "Business Administration",
-  "Engineering",
-  "Medicine",
-  "Law",
-  "Arts & Humanities",
-  "Science",
-  "Education",
-  "Social Sciences",
-  "Other",
-];
+const PROGRAMS = ["BSCS", "BEED", "BSED", "Others"];
 
 export default function StudentProfile() {
   const { user } = useAuth();
   const { toast } = useToast();
   const [fullName, setFullName] = useState("");
   const [program, setProgram] = useState("");
+  const [customProgram, setCustomProgram] = useState("");
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
 
@@ -45,7 +35,19 @@ export default function StudentProfile() {
       .then(({ data, error }) => {
         if (data) {
           setFullName(data.full_name ?? "");
-          setProgram(data.program ?? "");
+          const savedProgram = data.program ?? "";
+          // Check if the saved program is one of the predefined options
+          if (PROGRAMS.includes(savedProgram)) {
+            setProgram(savedProgram);
+            setCustomProgram("");
+          } else if (savedProgram) {
+            // It's a custom program
+            setProgram("Others");
+            setCustomProgram(savedProgram);
+          } else {
+            setProgram("");
+            setCustomProgram("");
+          }
         } else if (error && error.code === "PGRST116") {
           // Profile doesn't exist, create it
           supabase
@@ -54,6 +56,7 @@ export default function StudentProfile() {
             .then(() => {
               setFullName("");
               setProgram("");
+              setCustomProgram("");
             });
         }
         setLoading(false);
@@ -64,6 +67,9 @@ export default function StudentProfile() {
     e.preventDefault();
     if (!user) return;
     setSaving(true);
+
+    // Determine the program value to save
+    const programToSave = program === "Others" ? (customProgram.trim() || null) : (program || null);
 
     // Check if profile exists, if not create it, otherwise update
     const { data: existingProfile } = await supabase
@@ -76,13 +82,13 @@ export default function StudentProfile() {
     if (existingProfile) {
       const result = await supabase
         .from("profiles")
-        .update({ full_name: fullName || null, program: program || null })
+        .update({ full_name: fullName || null, program: programToSave })
         .eq("user_id", user.id);
       error = result.error;
     } else {
       const result = await supabase
         .from("profiles")
-        .insert({ user_id: user.id, role: "student", full_name: fullName || null, program: program || null });
+        .insert({ user_id: user.id, role: "student", full_name: fullName || null, program: programToSave });
       error = result.error;
     }
 
@@ -179,8 +185,23 @@ export default function StudentProfile() {
                   </SelectContent>
                 </Select>
               </div>
+              {program === "Others" && (
+                <div className="mt-2">
+                  <Input
+                    placeholder="Enter your program name"
+                    value={customProgram}
+                    onChange={(e) => setCustomProgram(e.target.value)}
+                    className="focus-visible:ring-student"
+                  />
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Please enter your preferred program name.
+                  </p>
+                </div>
+              )}
               <p className="text-xs text-muted-foreground">
-                Select your current program of study.
+                {program === "Others" 
+                  ? "Enter your custom program name above."
+                  : "Select your current program of study."}
               </p>
             </div>
 
