@@ -11,6 +11,9 @@ import StudentDashboard from "./pages/student/Dashboard";
 import StudentProfile from "./pages/student/Profile";
 import StudentSubjects from "./pages/student/Subjects";
 import StudentSubject from "./pages/student/Subject";
+import InstructorLayout from "./layouts/InstructorLayout";
+import InstructorDashboard from "./pages/instructor/Dashboard";
+import InstructorProfile from "./pages/instructor/Profile";
 import { AuthProvider } from "./contexts/AuthContext";
 
 const queryClient = new QueryClient();
@@ -30,6 +33,10 @@ const App = () => (
               <Route path="subjects" element={<StudentSubjects />} />
               <Route path="subject/:subjectId" element={<StudentSubject />} />
               <Route path="profile" element={<StudentProfile />} />
+            </Route>
+            <Route path="/instructor" element={<InstructorLayout />}>
+              <Route index element={<InstructorDashboard />} />
+              <Route path="profile" element={<InstructorProfile />} />
             </Route>
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
