@@ -1,4 +1,4 @@
-import { User, LogOut, LayoutDashboard } from "lucide-react";
+import { User, LogOut, LayoutDashboard, BookOpen } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import { useAuth } from "@/contexts/AuthContext";
 import {
@@ -20,6 +20,7 @@ import {
 
 const menuItems = [
   { title: "Dashboard", url: "/student", icon: LayoutDashboard },
+  { title: "Subjects", url: "/student/subjects", icon: BookOpen },
   { title: "Profile", url: "/student/profile", icon: User },
 ];
 

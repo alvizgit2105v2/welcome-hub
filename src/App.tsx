@@ -9,6 +9,8 @@ import NotFound from "./pages/NotFound";
 import StudentLayout from "./layouts/StudentLayout";
 import StudentDashboard from "./pages/student/Dashboard";
 import StudentProfile from "./pages/student/Profile";
+import StudentSubjects from "./pages/student/Subjects";
+import StudentSubject from "./pages/student/Subject";
 import { AuthProvider } from "./contexts/AuthContext";
 
 const queryClient = new QueryClient();
@@ -25,6 +27,8 @@ const App = () => (
             <Route path="/auth" element={<Auth />} />
             <Route path="/student" element={<StudentLayout />}>
               <Route index element={<StudentDashboard />} />
+              <Route path="subjects" element={<StudentSubjects />} />
+              <Route path="subject/:subjectId" element={<StudentSubject />} />
               <Route path="profile" element={<StudentProfile />} />
             </Route>
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
