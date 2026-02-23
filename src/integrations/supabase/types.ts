@@ -73,6 +73,30 @@ export type Database = {
         }
         Relationships: []
       }
+      programs: {
+        Row: {
+          created_at: string
+          id: string
+          instructor_id: string
+          name: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          instructor_id: string
+          name: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          instructor_id?: string
+          name?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       subjects: {
         Row: {
           created_at: string
@@ -80,6 +104,7 @@ export type Database = {
           id: string
           instructor_id: string
           name: string
+          program_id: string | null
           subject_code: string
           updated_at: string
         }
@@ -89,6 +114,7 @@ export type Database = {
           id?: string
           instructor_id: string
           name: string
+          program_id?: string | null
           subject_code: string
           updated_at?: string
         }
@@ -98,10 +124,19 @@ export type Database = {
           id?: string
           instructor_id?: string
           name?: string
+          program_id?: string | null
           subject_code?: string
           updated_at?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "subjects_program_id_fkey"
+            columns: ["program_id"]
+            isOneToOne: false
+            referencedRelation: "programs"
+            referencedColumns: ["id"]
+          },
+        ]
       }
     }
     Views: {
