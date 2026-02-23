@@ -52,7 +52,7 @@ export default function InstructorDashboard() {
   const loadPrograms = async () => {
     if (!user) return;
     const { data, error } = await supabase
-      .from("programs")
+      .from("programs" as any)
       .select("*")
       .eq("instructor_id", user.id)
       .order("created_at", { ascending: false });
@@ -60,7 +60,7 @@ export default function InstructorDashboard() {
     if (error) {
       console.error("Error loading programs:", error);
     } else {
-      setPrograms(data || []);
+      setPrograms((data as any) || []);
     }
     setLoading(false);
   };
@@ -69,29 +69,25 @@ export default function InstructorDashboard() {
     if (!user) return;
     const { data, error } = await supabase
       .from("subjects")
-      .select("*")
+      .select("id, name, subject_code, description, program_id, created_at")
       .eq("instructor_id", user.id)
       .order("created_at", { ascending: false });
 
     if (error) {
       console.error("Error loading subjects:", error);
     } else {
-      setSubjects(data || []);
+      setSubjects((data as any) || []);
     }
   };
 
   const generateSubjectCode = (subjectName: string): string => {
-    // Generate a unique subject code from the subject name
     const words = subjectName.trim().split(/\s+/);
     let code = "";
-    
     if (words.length === 1) {
       code = words[0].substring(0, 4).toUpperCase();
     } else {
       code = words.map(w => w[0]).join("").toUpperCase();
     }
-    
-    // Add a random number to ensure uniqueness
     const randomNum = Math.floor(Math.random() * 1000).toString().padStart(3, "0");
     return `${code}${randomNum}`;
   };
@@ -101,23 +97,14 @@ export default function InstructorDashboard() {
     if (!user || !newProgramName.trim()) return;
 
     setAddingProgram(true);
-    const { data, error } = await supabase
-      .from("programs")
-      .insert({ name: newProgramName.trim(), instructor_id: user.id })
-      .select()
-      .single();
+    const { error } = await supabase
+      .from("programs" as any)
+      .insert([{ name: newProgramName.trim(), instructor_id: user.id }] as any);
 
     if (error) {
-      toast({
-        title: "Error",
-        description: error.message,
-        variant: "destructive",
-      });
+      toast({ title: "Error", description: error.message, variant: "destructive" });
     } else {
-      toast({
-        title: "Program added",
-        description: `${newProgramName} has been added successfully.`,
-      });
+      toast({ title: "Program added", description: `${newProgramName} has been added successfully.` });
       setNewProgramName("");
       loadPrograms();
     }
@@ -127,40 +114,26 @@ export default function InstructorDashboard() {
   const handleAddSubject = async (e: React.FormEvent, programId: string) => {
     e.preventDefault();
     if (!user || !programId) return;
-
     const subjectName = subjectInputs[programId]?.trim();
     if (!subjectName) return;
 
     setAddingSubject(programId);
     const subjectCode = generateSubjectCode(subjectName);
-    
-    const { data, error } = await supabase
+
+    const { error } = await supabase
       .from("subjects")
       .insert({
         name: subjectName,
         subject_code: subjectCode,
         instructor_id: user.id,
         program_id: programId,
-      })
-      .select()
-      .single();
+      });
 
     if (error) {
-      toast({
-        title: "Error",
-        description: error.message,
-        variant: "destructive",
-      });
+      toast({ title: "Error", description: error.message, variant: "destructive" });
     } else {
-      toast({
-        title: "Subject added",
-        description: `${subjectName} (${subjectCode}) has been added successfully.`,
-      });
-      setSubjectInputs((prev) => {
-        const next = { ...prev };
-        delete next[programId];
-        return next;
-      });
+      toast({ title: "Subject added", description: `${subjectName} (${subjectCode}) has been added successfully.` });
+      setSubjectInputs((prev) => { const next = { ...prev }; delete next[programId]; return next; });
       loadSubjects();
     }
     setAddingSubject(null);
@@ -168,28 +141,18 @@ export default function InstructorDashboard() {
 
   const handleDeleteProgram = async (programId: string) => {
     if (!user) return;
-    
-    if (!confirm("Are you sure you want to delete this program? All associated subjects will be unlinked.")) {
-      return;
-    }
+    if (!confirm("Are you sure you want to delete this program? All associated subjects will be unlinked.")) return;
 
     const { error } = await supabase
-      .from("programs")
+      .from("programs" as any)
       .delete()
       .eq("id", programId)
       .eq("instructor_id", user.id);
 
     if (error) {
-      toast({
-        title: "Error",
-        description: error.message,
-        variant: "destructive",
-      });
+      toast({ title: "Error", description: error.message, variant: "destructive" });
     } else {
-      toast({
-        title: "Program deleted",
-        description: "Program has been deleted successfully.",
-      });
+      toast({ title: "Program deleted", description: "Program has been deleted successfully." });
       loadPrograms();
       loadSubjects();
     }
@@ -197,17 +160,12 @@ export default function InstructorDashboard() {
 
   const toggleProgram = (programId: string) => {
     const newExpanded = new Set(expandedPrograms);
-    if (newExpanded.has(programId)) {
-      newExpanded.delete(programId);
-    } else {
-      newExpanded.add(programId);
-    }
+    if (newExpanded.has(programId)) newExpanded.delete(programId);
+    else newExpanded.add(programId);
     setExpandedPrograms(newExpanded);
   };
 
-  const getSubjectsForProgram = (programId: string) => {
-    return subjects.filter((s) => s.program_id === programId);
-  };
+  const getSubjectsForProgram = (programId: string) => subjects.filter((s) => s.program_id === programId);
 
   if (loading) {
     return (
@@ -235,9 +193,7 @@ export default function InstructorDashboard() {
             <Plus className="h-5 w-5 text-instructor" />
             Add Program
           </CardTitle>
-          <CardDescription>
-            Create a new program (e.g., BSCS, BEED, BSED)
-          </CardDescription>
+          <CardDescription>Create a new program (e.g., BSCS, BEED, BSED)</CardDescription>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleAddProgram} className="flex gap-2">
@@ -248,19 +204,8 @@ export default function InstructorDashboard() {
               className="flex-1 focus-visible:ring-instructor"
               required
             />
-            <Button
-              type="submit"
-              disabled={addingProgram}
-              className="bg-instructor text-instructor-foreground hover:bg-instructor/90"
-            >
-              {addingProgram ? (
-                <Loader2 className="h-4 w-4 animate-spin" />
-              ) : (
-                <>
-                  <Plus className="mr-2 h-4 w-4" />
-                  Add
-                </>
-              )}
+            <Button type="submit" disabled={addingProgram} className="bg-instructor text-instructor-foreground hover:bg-instructor/90">
+              {addingProgram ? <Loader2 className="h-4 w-4 animate-spin" /> : <><Plus className="mr-2 h-4 w-4" />Add</>}
             </Button>
           </form>
         </CardContent>
@@ -268,17 +213,13 @@ export default function InstructorDashboard() {
 
       {/* Programs List */}
       <div className="space-y-4">
-        <h2 className="font-display text-xl font-semibold text-foreground">
-          Programs ({programs.length})
-        </h2>
+        <h2 className="font-display text-xl font-semibold text-foreground">Programs ({programs.length})</h2>
 
         {programs.length === 0 ? (
           <Card className="border-instructor/20">
             <CardContent className="py-8 text-center">
               <GraduationCap className="mx-auto h-12 w-12 text-muted-foreground mb-4" />
-              <p className="text-sm text-muted-foreground">
-                No programs yet. Create your first program above.
-              </p>
+              <p className="text-sm text-muted-foreground">No programs yet. Create your first program above.</p>
             </CardContent>
           </Card>
         ) : (
@@ -291,16 +232,9 @@ export default function InstructorDashboard() {
                 <Card key={program.id} className="border-instructor/20">
                   <CardHeader className="pb-3">
                     <div className="flex items-center justify-between">
-                      <Collapsible
-                        open={isExpanded}
-                        onOpenChange={() => toggleProgram(program.id)}
-                      >
+                      <Collapsible open={isExpanded} onOpenChange={() => toggleProgram(program.id)}>
                         <CollapsibleTrigger className="flex items-center gap-2 hover:text-instructor transition-colors">
-                          {isExpanded ? (
-                            <ChevronDown className="h-4 w-4" />
-                          ) : (
-                            <ChevronRight className="h-4 w-4" />
-                          )}
+                          {isExpanded ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
                           <GraduationCap className="h-5 w-5 text-instructor" />
                           <CardTitle className="text-lg">{program.name}</CardTitle>
                           <span className="text-sm text-muted-foreground ml-2">
@@ -308,44 +242,21 @@ export default function InstructorDashboard() {
                           </span>
                         </CollapsibleTrigger>
                         <CollapsibleContent className="mt-4">
-                          {/* Add Subject Form */}
-                          <form
-                            onSubmit={(e) => handleAddSubject(e, program.id)}
-                            className="flex gap-2 mb-4"
-                          >
+                          <form onSubmit={(e) => handleAddSubject(e, program.id)} className="flex gap-2 mb-4">
                             <Input
                               placeholder="Enter subject name"
                               value={subjectInputs[program.id] || ""}
-                              onChange={(e) => {
-                                setSubjectInputs((prev) => ({
-                                  ...prev,
-                                  [program.id]: e.target.value,
-                                }));
-                              }}
+                              onChange={(e) => setSubjectInputs((prev) => ({ ...prev, [program.id]: e.target.value }))}
                               className="flex-1 focus-visible:ring-instructor"
                               required
                             />
-                            <Button
-                              type="submit"
-                              disabled={addingSubject === program.id}
-                              className="bg-instructor text-instructor-foreground hover:bg-instructor/90"
-                            >
-                              {addingSubject === program.id ? (
-                                <Loader2 className="h-4 w-4 animate-spin" />
-                              ) : (
-                                <>
-                                  <Plus className="mr-2 h-4 w-4" />
-                                  Add Subject
-                                </>
-                              )}
+                            <Button type="submit" disabled={addingSubject === program.id} className="bg-instructor text-instructor-foreground hover:bg-instructor/90">
+                              {addingSubject === program.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <><Plus className="mr-2 h-4 w-4" />Add Subject</>}
                             </Button>
                           </form>
 
-                          {/* Subjects List */}
                           {programSubjects.length === 0 ? (
-                            <p className="text-sm text-muted-foreground py-4 text-center">
-                              No subjects yet. Add a subject above.
-                            </p>
+                            <p className="text-sm text-muted-foreground py-4 text-center">No subjects yet. Add a subject above.</p>
                           ) : (
                             <div className="space-y-2">
                               {programSubjects.map((subject) => (
@@ -361,9 +272,7 @@ export default function InstructorDashboard() {
                                           <BookOpen className="h-4 w-4 text-instructor" />
                                           <span className="font-medium">{subject.name}</span>
                                         </div>
-                                        <p className="text-xs text-muted-foreground mt-1">
-                                          Code: {subject.subject_code}
-                                        </p>
+                                        <p className="text-xs text-muted-foreground mt-1">Code: {subject.subject_code}</p>
                                       </div>
                                     </div>
                                   </CardContent>
@@ -373,12 +282,7 @@ export default function InstructorDashboard() {
                           )}
                         </CollapsibleContent>
                       </Collapsible>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => handleDeleteProgram(program.id)}
-                        className="text-destructive hover:text-destructive hover:bg-destructive/10"
-                      >
+                      <Button variant="ghost" size="sm" onClick={() => handleDeleteProgram(program.id)} className="text-destructive hover:text-destructive hover:bg-destructive/10">
                         <Trash2 className="h-4 w-4" />
                       </Button>
                     </div>

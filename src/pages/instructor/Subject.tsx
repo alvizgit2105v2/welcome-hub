@@ -6,18 +6,17 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
-import { ArrowLeft, BookOpen, Users, FileText, ClipboardList, FolderKanban, GraduationCap, Loader2 } from "lucide-react";
+import { ArrowLeft, Users, FileText, ClipboardList, FolderKanban, GraduationCap, Loader2 } from "lucide-react";
 
-interface Subject {
+interface SubjectData {
   id: string;
   name: string;
   subject_code: string;
   description: string | null;
   program_id: string | null;
-  created_at: string;
 }
 
-interface Program {
+interface ProgramData {
   id: string;
   name: string;
 }
@@ -27,8 +26,8 @@ export default function InstructorSubject() {
   const { user } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
-  const [subject, setSubject] = useState<Subject | null>(null);
-  const [program, setProgram] = useState<Program | null>(null);
+  const [subject, setSubject] = useState<SubjectData | null>(null);
+  const [program, setProgram] = useState<ProgramData | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -42,12 +41,12 @@ export default function InstructorSubject() {
 
     const { data: subjectData, error: subjectError } = await supabase
       .from("subjects")
-      .select("*")
+      .select("id, name, subject_code, description, program_id")
       .eq("id", subjectId)
       .eq("instructor_id", user.id)
       .single();
 
-    if (subjectError) {
+    if (subjectError || !subjectData) {
       toast({
         title: "Error",
         description: "Subject not found or you don't have access.",
@@ -59,16 +58,15 @@ export default function InstructorSubject() {
 
     setSubject(subjectData);
 
-    // Load program if program_id exists
     if (subjectData.program_id) {
       const { data: programData } = await supabase
-        .from("programs")
+        .from("programs" as any)
         .select("id, name")
         .eq("id", subjectData.program_id)
         .single();
 
       if (programData) {
-        setProgram(programData);
+        setProgram(programData as any);
       }
     }
 
@@ -83,162 +81,79 @@ export default function InstructorSubject() {
     );
   }
 
-  if (!subject) {
-    return null;
-  }
+  if (!subject) return null;
+
+  const tabItems = [
+    { value: "attendance", label: "Attendance", icon: Users, description: "Manage and track student attendance for this subject.", emptyText: "No attendance records yet.", emptySubtext: "Attendance management features will be available here." },
+    { value: "assignments", label: "Assignments", icon: FileText, description: "Create and manage assignments for this subject.", emptyText: "No assignments created yet.", emptySubtext: "Assignment management features will be available here." },
+    { value: "quizzes", label: "Quizzes", icon: ClipboardList, description: "Create and manage quizzes for this subject.", emptyText: "No quizzes created yet.", emptySubtext: "Quiz management features will be available here." },
+    { value: "projects", label: "Projects", icon: FolderKanban, description: "Create and manage projects for this subject.", emptyText: "No projects created yet.", emptySubtext: "Project management features will be available here." },
+    { value: "exams", label: "Exams", icon: GraduationCap, description: "Create and manage exams for this subject.", emptyText: "No exams scheduled yet.", emptySubtext: "Exam management features will be available here." },
+  ];
 
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center gap-4">
+      <div className="flex items-start gap-4">
         <Button
           variant="ghost"
-          size="sm"
+          size="icon"
           onClick={() => navigate("/instructor")}
-          className="text-muted-foreground hover:text-foreground"
+          className="mt-1 text-muted-foreground hover:text-instructor"
         >
-          <ArrowLeft className="mr-2 h-4 w-4" />
-          Back
+          <ArrowLeft className="h-5 w-5" />
         </Button>
         <div>
-          <h1 className="font-display text-3xl font-bold tracking-tight text-foreground">
+          <div className="flex items-center gap-3">
+            <span className="text-xs font-mono font-semibold text-instructor bg-instructor/10 px-2 py-0.5 rounded">
+              {subject.subject_code}
+            </span>
+          </div>
+          <h1 className="font-display text-3xl font-bold tracking-tight text-foreground mt-1">
             {subject.name}
           </h1>
-          <div className="flex items-center gap-4 mt-1">
-            <p className="text-sm text-muted-foreground">
-              Code: {subject.subject_code}
+          {program && (
+            <p className="mt-1 text-muted-foreground text-sm flex items-center gap-1">
+              <GraduationCap className="h-3.5 w-3.5" />
+              {program.name}
             </p>
-            {program && (
-              <div className="flex items-center gap-1 text-sm text-muted-foreground">
-                <GraduationCap className="h-4 w-4" />
-                <span>{program.name}</span>
-              </div>
-            )}
-          </div>
+          )}
         </div>
       </div>
 
-      {/* Tabs */}
+      {/* Tabbed Content */}
       <Tabs defaultValue="attendance" className="w-full">
-        <TabsList className="grid w-full grid-cols-5">
-          <TabsTrigger value="attendance" className="data-[state=active]:bg-instructor/10 data-[state=active]:text-instructor">
-            <Users className="mr-2 h-4 w-4" />
-            Attendance
-          </TabsTrigger>
-          <TabsTrigger value="assignments" className="data-[state=active]:bg-instructor/10 data-[state=active]:text-instructor">
-            <FileText className="mr-2 h-4 w-4" />
-            Assignments
-          </TabsTrigger>
-          <TabsTrigger value="quizzes" className="data-[state=active]:bg-instructor/10 data-[state=active]:text-instructor">
-            <ClipboardList className="mr-2 h-4 w-4" />
-            Quizzes
-          </TabsTrigger>
-          <TabsTrigger value="projects" className="data-[state=active]:bg-instructor/10 data-[state=active]:text-instructor">
-            <FolderKanban className="mr-2 h-4 w-4" />
-            Projects
-          </TabsTrigger>
-          <TabsTrigger value="exams" className="data-[state=active]:bg-instructor/10 data-[state=active]:text-instructor">
-            <GraduationCap className="mr-2 h-4 w-4" />
-            Exams
-          </TabsTrigger>
+        <TabsList className="w-full justify-start bg-muted/50 border border-border">
+          {tabItems.map((tab) => (
+            <TabsTrigger
+              key={tab.value}
+              value={tab.value}
+              className="flex items-center gap-2 data-[state=active]:bg-instructor data-[state=active]:text-instructor-foreground"
+            >
+              <tab.icon className="h-4 w-4" />
+              <span className="hidden sm:inline">{tab.label}</span>
+            </TabsTrigger>
+          ))}
         </TabsList>
 
-        <TabsContent value="attendance" className="mt-6">
-          <Card className="border-instructor/20">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2 text-foreground">
-                <Users className="h-5 w-5 text-instructor" />
-                Attendance
-              </CardTitle>
-              <CardDescription>
-                Manage and track student attendance for this subject.
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <p className="text-sm text-muted-foreground">
-                Attendance management features will be available here.
-              </p>
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        <TabsContent value="assignments" className="mt-6">
-          <Card className="border-instructor/20">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2 text-foreground">
-                <FileText className="h-5 w-5 text-instructor" />
-                Assignments
-              </CardTitle>
-              <CardDescription>
-                Create and manage assignments for this subject.
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <p className="text-sm text-muted-foreground">
-                Assignment management features will be available here.
-              </p>
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        <TabsContent value="quizzes" className="mt-6">
-          <Card className="border-instructor/20">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2 text-foreground">
-                <ClipboardList className="h-5 w-5 text-instructor" />
-                Quizzes
-              </CardTitle>
-              <CardDescription>
-                Create and manage quizzes for this subject.
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <p className="text-sm text-muted-foreground">
-                Quiz management features will be available here.
-              </p>
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        <TabsContent value="projects" className="mt-6">
-          <Card className="border-instructor/20">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2 text-foreground">
-                <FolderKanban className="h-5 w-5 text-instructor" />
-                Projects
-              </CardTitle>
-              <CardDescription>
-                Create and manage projects for this subject.
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <p className="text-sm text-muted-foreground">
-                Project management features will be available here.
-              </p>
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        <TabsContent value="exams" className="mt-6">
-          <Card className="border-instructor/20">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2 text-foreground">
-                <GraduationCap className="h-5 w-5 text-instructor" />
-                Exams
-              </CardTitle>
-              <CardDescription>
-                Create and manage exams for this subject.
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <p className="text-sm text-muted-foreground">
-                Exam management features will be available here.
-              </p>
-            </CardContent>
-          </Card>
-        </TabsContent>
+        {tabItems.map((tab) => (
+          <TabsContent key={tab.value} value={tab.value}>
+            <Card className="border-instructor/20">
+              <CardHeader>
+                <CardTitle className="text-foreground">{tab.label}</CardTitle>
+                <CardDescription>{tab.description}</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="flex flex-col items-center justify-center py-10 text-center">
+                  <tab.icon className="h-10 w-10 text-muted-foreground mb-3" />
+                  <p className="text-muted-foreground">{tab.emptyText}</p>
+                  <p className="text-xs text-muted-foreground mt-1">{tab.emptySubtext}</p>
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+        ))}
       </Tabs>
     </div>
   );
 }
-
