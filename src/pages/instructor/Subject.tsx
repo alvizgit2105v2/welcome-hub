@@ -6,7 +6,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
-import { ArrowLeft, Users, FileText, ClipboardList, FolderKanban, GraduationCap, Loader2 } from "lucide-react";
+import { ArrowLeft, Users, UserCheck, FileText, ClipboardList, FolderKanban, GraduationCap, Loader2 } from "lucide-react";
 
 interface SubjectData {
   id: string;
@@ -21,6 +21,11 @@ interface ProgramData {
   name: string;
 }
 
+interface EnrolledStudent {
+  student_id: string;
+  full_name: string | null;
+}
+
 export default function InstructorSubject() {
   const { subjectId } = useParams<{ subjectId: string }>();
   const { user } = useAuth();
@@ -28,6 +33,8 @@ export default function InstructorSubject() {
   const { toast } = useToast();
   const [subject, setSubject] = useState<SubjectData | null>(null);
   const [program, setProgram] = useState<ProgramData | null>(null);
+  const [students, setStudents] = useState<EnrolledStudent[]>([]);
+  const [studentsLoading, setStudentsLoading] = useState(false);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -71,6 +78,37 @@ export default function InstructorSubject() {
     }
 
     setLoading(false);
+    loadStudents();
+  };
+
+  const loadStudents = async () => {
+    if (!subjectId) return;
+    setStudentsLoading(true);
+
+    const { data: enrollments, error } = await supabase
+      .from("enrollments")
+      .select("student_id")
+      .eq("subject_id", subjectId);
+
+    if (error || !enrollments?.length) {
+      setStudents([]);
+      setStudentsLoading(false);
+      return;
+    }
+
+    const studentIds = enrollments.map((e) => e.student_id);
+    const { data: profiles } = await supabase
+      .from("profiles")
+      .select("user_id, full_name")
+      .in("user_id", studentIds);
+
+    setStudents(
+      studentIds.map((id) => ({
+        student_id: id,
+        full_name: profiles?.find((p) => p.user_id === id)?.full_name ?? null,
+      }))
+    );
+    setStudentsLoading(false);
   };
 
   if (loading) {
@@ -84,6 +122,7 @@ export default function InstructorSubject() {
   if (!subject) return null;
 
   const tabItems = [
+    { value: "students", label: "Students", icon: UserCheck },
     { value: "attendance", label: "Attendance", icon: Users, description: "Manage and track student attendance for this subject.", emptyText: "No attendance records yet.", emptySubtext: "Attendance management features will be available here." },
     { value: "assignments", label: "Assignments", icon: FileText, description: "Create and manage assignments for this subject.", emptyText: "No assignments created yet.", emptySubtext: "Assignment management features will be available here." },
     { value: "quizzes", label: "Quizzes", icon: ClipboardList, description: "Create and manage quizzes for this subject.", emptyText: "No quizzes created yet.", emptySubtext: "Quiz management features will be available here." },
@@ -122,7 +161,7 @@ export default function InstructorSubject() {
       </div>
 
       {/* Tabbed Content */}
-      <Tabs defaultValue="attendance" className="w-full">
+      <Tabs defaultValue="students" className="w-full">
         <TabsList className="w-full justify-start bg-muted/50 border border-border">
           {tabItems.map((tab) => (
             <TabsTrigger
@@ -136,18 +175,55 @@ export default function InstructorSubject() {
           ))}
         </TabsList>
 
-        {tabItems.map((tab) => (
+        {/* Students Tab */}
+        <TabsContent value="students">
+          <Card className="border-instructor/20">
+            <CardHeader>
+              <CardTitle className="text-foreground">Enrolled Students</CardTitle>
+              <CardDescription>Students currently enrolled in this subject.</CardDescription>
+            </CardHeader>
+            <CardContent>
+              {studentsLoading ? (
+                <div className="flex justify-center py-10">
+                  <Loader2 className="h-6 w-6 animate-spin text-instructor" />
+                </div>
+              ) : students.length === 0 ? (
+                <div className="flex flex-col items-center justify-center py-10 text-center">
+                  <UserCheck className="h-10 w-10 text-muted-foreground mb-3" />
+                  <p className="text-muted-foreground">No students enrolled yet.</p>
+                  <p className="text-xs text-muted-foreground mt-1">Students can enroll using the subject code.</p>
+                </div>
+              ) : (
+                <ul className="divide-y divide-border">
+                  {students.map((s, i) => (
+                    <li key={s.student_id} className="flex items-center gap-3 py-3">
+                      <div className="flex items-center justify-center h-8 w-8 rounded-full bg-instructor/10 text-instructor text-sm font-semibold">
+                        {i + 1}
+                      </div>
+                      <span className="text-sm font-medium text-foreground">
+                        {s.full_name || "Unnamed Student"}
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        {/* Other Tabs */}
+        {tabItems.filter(t => t.value !== "students").map((tab) => (
           <TabsContent key={tab.value} value={tab.value}>
             <Card className="border-instructor/20">
               <CardHeader>
                 <CardTitle className="text-foreground">{tab.label}</CardTitle>
-                <CardDescription>{tab.description}</CardDescription>
+                <CardDescription>{(tab as any).description}</CardDescription>
               </CardHeader>
               <CardContent>
                 <div className="flex flex-col items-center justify-center py-10 text-center">
                   <tab.icon className="h-10 w-10 text-muted-foreground mb-3" />
-                  <p className="text-muted-foreground">{tab.emptyText}</p>
-                  <p className="text-xs text-muted-foreground mt-1">{tab.emptySubtext}</p>
+                  <p className="text-muted-foreground">{(tab as any).emptyText}</p>
+                  <p className="text-xs text-muted-foreground mt-1">{(tab as any).emptySubtext}</p>
                 </div>
               </CardContent>
             </Card>
