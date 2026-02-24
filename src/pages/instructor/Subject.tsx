@@ -376,8 +376,8 @@ export default function InstructorSubject() {
                                   size="sm"
                                   onClick={() => setAttendanceStatus(s.student_id, "present")}
                                   className={isPresent
-                                    ? "bg-instructor text-instructor-foreground hover:bg-instructor/90 border-instructor"
-                                    : "border-border text-muted-foreground hover:bg-instructor/10 hover:text-instructor hover:border-instructor"
+                                    ? "bg-green-600 text-white hover:bg-green-700 border-green-600"
+                                    : "border-border text-muted-foreground hover:bg-green-600/10 hover:text-green-600 hover:border-green-600"
                                   }
                                 >
                                   <Check className="h-4 w-4 mr-1" />
