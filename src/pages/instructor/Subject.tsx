@@ -246,7 +246,7 @@ export default function InstructorSubject() {
       </div>
 
       {/* Tabbed Content */}
-      <Tabs defaultValue="students" className="w-full">
+      <Tabs defaultValue="students" className="w-full" onValueChange={(val) => { if (val === "attendance") loadSessions(); }}>
         <TabsList className="w-full justify-start bg-muted/50 border border-border">
           {tabItems.map((tab) => (
             <TabsTrigger
