@@ -14,6 +14,64 @@ export type Database = {
   }
   public: {
     Tables: {
+      attendance_records: {
+        Row: {
+          id: string
+          session_id: string
+          status: string
+          student_id: string
+        }
+        Insert: {
+          id?: string
+          session_id: string
+          status?: string
+          student_id: string
+        }
+        Update: {
+          id?: string
+          session_id?: string
+          status?: string
+          student_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "attendance_records_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: false
+            referencedRelation: "attendance_sessions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      attendance_sessions: {
+        Row: {
+          created_at: string
+          id: string
+          session_date: string
+          subject_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          session_date?: string
+          subject_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          session_date?: string
+          subject_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "attendance_sessions_subject_id_fkey"
+            columns: ["subject_id"]
+            isOneToOne: false
+            referencedRelation: "subjects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       enrollments: {
         Row: {
           enrolled_at: string
