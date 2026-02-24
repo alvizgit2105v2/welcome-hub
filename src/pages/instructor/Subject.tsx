@@ -178,10 +178,10 @@ export default function InstructorSubject() {
     setAttendanceLoading(false);
   };
 
-  const toggleAttendance = async (studentId: string) => {
+  const setAttendanceStatus = async (studentId: string, newStatus: string) => {
     if (!selectedSession) return;
     const currentStatus = attendanceRecords[studentId] || "absent";
-    const newStatus = currentStatus === "present" ? "absent" : "present";
+    if (currentStatus === newStatus) return;
     setSavingAttendance(true);
     setAttendanceRecords((prev) => ({ ...prev, [studentId]: newStatus }));
 
