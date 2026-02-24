@@ -6,7 +6,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
-import { ArrowLeft, Users, UserCheck, FileText, ClipboardList, FolderKanban, GraduationCap, Loader2 } from "lucide-react";
+import { ArrowLeft, Users, UserCheck, FileText, ClipboardList, FolderKanban, GraduationCap, Loader2, Plus, CalendarDays, Check, X } from "lucide-react";
 
 interface SubjectData {
   id: string;
@@ -24,6 +24,17 @@ interface ProgramData {
 interface EnrolledStudent {
   student_id: string;
   full_name: string | null;
+}
+
+interface AttendanceSession {
+  id: string;
+  session_date: string;
+  created_at: string;
+}
+
+interface AttendanceRecord {
+  student_id: string;
+  status: string;
 }
 
 export default function InstructorSubject() {
