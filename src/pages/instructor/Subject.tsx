@@ -128,6 +128,74 @@ export default function InstructorSubject() {
     setStudentsLoading(false);
   };
 
+  const loadSessions = async () => {
+    if (!subjectId) return;
+    const { data } = await supabase
+      .from("attendance_sessions")
+      .select("id, session_date, created_at")
+      .eq("subject_id", subjectId)
+      .order("session_date", { ascending: false });
+    setSessions((data as AttendanceSession[]) || []);
+  };
+
+  const createSession = async () => {
+    if (!subjectId) return;
+    setCreatingSession(true);
+    const today = new Date().toISOString().split("T")[0];
+    const { data, error } = await supabase
+      .from("attendance_sessions")
+      .insert({ subject_id: subjectId, session_date: today })
+      .select("id, session_date, created_at")
+      .single();
+    if (error) {
+      toast({ title: "Error", description: error.message.includes("duplicate") ? "A session for today already exists." : error.message, variant: "destructive" });
+    } else if (data) {
+      setSessions((prev) => [(data as AttendanceSession), ...prev]);
+      setSelectedSession((data as AttendanceSession).id);
+      // Pre-fill all students as absent
+      if (students.length > 0) {
+        const records = students.map((s) => ({ session_id: (data as AttendanceSession).id, student_id: s.student_id, status: "absent" }));
+        await supabase.from("attendance_records").insert(records);
+        const map: Record<string, string> = {};
+        students.forEach((s) => (map[s.student_id] = "absent"));
+        setAttendanceRecords(map);
+      }
+      toast({ title: "Session created", description: `Attendance session for ${today} created.` });
+    }
+    setCreatingSession(false);
+  };
+
+  const loadAttendanceRecords = async (sessionId: string) => {
+    setAttendanceLoading(true);
+    setSelectedSession(sessionId);
+    const { data } = await supabase
+      .from("attendance_records")
+      .select("student_id, status")
+      .eq("session_id", sessionId);
+    const map: Record<string, string> = {};
+    (data as AttendanceRecord[] || []).forEach((r) => (map[r.student_id] = r.status));
+    setAttendanceRecords(map);
+    setAttendanceLoading(false);
+  };
+
+  const toggleAttendance = async (studentId: string) => {
+    if (!selectedSession) return;
+    const currentStatus = attendanceRecords[studentId] || "absent";
+    const newStatus = currentStatus === "present" ? "absent" : "present";
+    setSavingAttendance(true);
+    setAttendanceRecords((prev) => ({ ...prev, [studentId]: newStatus }));
+
+    const { error } = await supabase
+      .from("attendance_records")
+      .upsert({ session_id: selectedSession, student_id: studentId, status: newStatus }, { onConflict: "session_id,student_id" });
+
+    if (error) {
+      setAttendanceRecords((prev) => ({ ...prev, [studentId]: currentStatus }));
+      toast({ title: "Error", description: "Failed to update attendance.", variant: "destructive" });
+    }
+    setSavingAttendance(false);
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center py-20">
@@ -140,7 +208,7 @@ export default function InstructorSubject() {
 
   const tabItems = [
     { value: "students", label: "Students", icon: UserCheck },
-    { value: "attendance", label: "Attendance", icon: Users, description: "Manage and track student attendance for this subject.", emptyText: "No attendance records yet.", emptySubtext: "Attendance management features will be available here." },
+    { value: "attendance", label: "Attendance", icon: Users },
     { value: "assignments", label: "Assignments", icon: FileText, description: "Create and manage assignments for this subject.", emptyText: "No assignments created yet.", emptySubtext: "Assignment management features will be available here." },
     { value: "quizzes", label: "Quizzes", icon: ClipboardList, description: "Create and manage quizzes for this subject.", emptyText: "No quizzes created yet.", emptySubtext: "Quiz management features will be available here." },
     { value: "projects", label: "Projects", icon: FolderKanban, description: "Create and manage projects for this subject.", emptyText: "No projects created yet.", emptySubtext: "Project management features will be available here." },
