@@ -47,6 +47,12 @@ export default function InstructorSubject() {
   const [students, setStudents] = useState<EnrolledStudent[]>([]);
   const [studentsLoading, setStudentsLoading] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [sessions, setSessions] = useState<AttendanceSession[]>([]);
+  const [selectedSession, setSelectedSession] = useState<string | null>(null);
+  const [attendanceRecords, setAttendanceRecords] = useState<Record<string, string>>({});
+  const [attendanceLoading, setAttendanceLoading] = useState(false);
+  const [savingAttendance, setSavingAttendance] = useState(false);
+  const [creatingSession, setCreatingSession] = useState(false);
 
   useEffect(() => {
     if (subjectId && user) {
