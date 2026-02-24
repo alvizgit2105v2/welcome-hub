@@ -370,18 +370,32 @@ export default function InstructorSubject() {
                                   {s.full_name || "Unnamed Student"}
                                 </span>
                               </div>
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={() => toggleAttendance(s.student_id)}
-                                className={isPresent
-                                  ? "bg-instructor/10 border-instructor text-instructor hover:bg-instructor/20"
-                                  : "bg-destructive/10 border-destructive/30 text-destructive hover:bg-destructive/20"
-                                }
-                              >
-                                {isPresent ? <Check className="h-4 w-4 mr-1" /> : <X className="h-4 w-4 mr-1" />}
-                                {isPresent ? "Present" : "Absent"}
-                              </Button>
+                              <div className="flex items-center gap-2">
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => setAttendanceStatus(s.student_id, "present")}
+                                  className={isPresent
+                                    ? "bg-instructor text-instructor-foreground hover:bg-instructor/90 border-instructor"
+                                    : "border-border text-muted-foreground hover:bg-instructor/10 hover:text-instructor hover:border-instructor"
+                                  }
+                                >
+                                  <Check className="h-4 w-4 mr-1" />
+                                  Present
+                                </Button>
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => setAttendanceStatus(s.student_id, "absent")}
+                                  className={!isPresent
+                                    ? "bg-destructive text-destructive-foreground hover:bg-destructive/90 border-destructive"
+                                    : "border-border text-muted-foreground hover:bg-destructive/10 hover:text-destructive hover:border-destructive"
+                                  }
+                                >
+                                  <X className="h-4 w-4 mr-1" />
+                                  Absent
+                                </Button>
+                              </div>
                             </li>
                           );
                         })}
