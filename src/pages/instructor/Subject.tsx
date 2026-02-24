@@ -296,8 +296,106 @@ export default function InstructorSubject() {
           </Card>
         </TabsContent>
 
+        {/* Attendance Tab */}
+        <TabsContent value="attendance">
+          <Card className="border-instructor/20">
+            <CardHeader className="flex flex-row items-center justify-between">
+              <div>
+                <CardTitle className="text-foreground">Attendance</CardTitle>
+                <CardDescription>Record student attendance by session date.</CardDescription>
+              </div>
+              <Button
+                onClick={createSession}
+                disabled={creatingSession || students.length === 0}
+                className="bg-instructor hover:bg-instructor/90 text-instructor-foreground"
+                size="sm"
+              >
+                {creatingSession ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />}
+                <span className="ml-1 hidden sm:inline">New Session</span>
+              </Button>
+            </CardHeader>
+            <CardContent>
+              {students.length === 0 ? (
+                <div className="flex flex-col items-center justify-center py-10 text-center">
+                  <Users className="h-10 w-10 text-muted-foreground mb-3" />
+                  <p className="text-muted-foreground">No students enrolled yet.</p>
+                  <p className="text-xs text-muted-foreground mt-1">Enroll students first to record attendance.</p>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  {/* Session selector */}
+                  {sessions.length > 0 && (
+                    <div className="flex flex-wrap gap-2">
+                      {sessions.map((s) => (
+                        <Button
+                          key={s.id}
+                          variant={selectedSession === s.id ? "default" : "outline"}
+                          size="sm"
+                          onClick={() => loadAttendanceRecords(s.id)}
+                          className={selectedSession === s.id ? "bg-instructor text-instructor-foreground hover:bg-instructor/90" : "border-instructor/30 text-instructor hover:bg-instructor/10"}
+                        >
+                          <CalendarDays className="h-3.5 w-3.5 mr-1" />
+                          {new Date(s.session_date).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
+                        </Button>
+                      ))}
+                    </div>
+                  )}
+
+                  {sessions.length === 0 && (
+                    <div className="flex flex-col items-center justify-center py-10 text-center">
+                      <CalendarDays className="h-10 w-10 text-muted-foreground mb-3" />
+                      <p className="text-muted-foreground">No attendance sessions yet.</p>
+                      <p className="text-xs text-muted-foreground mt-1">Click "New Session" to create today's attendance.</p>
+                    </div>
+                  )}
+
+                  {/* Attendance list */}
+                  {selectedSession && (
+                    attendanceLoading ? (
+                      <div className="flex justify-center py-10">
+                        <Loader2 className="h-6 w-6 animate-spin text-instructor" />
+                      </div>
+                    ) : (
+                      <ul className="divide-y divide-border">
+                        {students.map((s, i) => {
+                          const status = attendanceRecords[s.student_id] || "absent";
+                          const isPresent = status === "present";
+                          return (
+                            <li key={s.student_id} className="flex items-center justify-between py-3">
+                              <div className="flex items-center gap-3">
+                                <div className="flex items-center justify-center h-8 w-8 rounded-full bg-instructor/10 text-instructor text-sm font-semibold">
+                                  {i + 1}
+                                </div>
+                                <span className="text-sm font-medium text-foreground">
+                                  {s.full_name || "Unnamed Student"}
+                                </span>
+                              </div>
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => toggleAttendance(s.student_id)}
+                                className={isPresent
+                                  ? "bg-instructor/10 border-instructor text-instructor hover:bg-instructor/20"
+                                  : "bg-destructive/10 border-destructive/30 text-destructive hover:bg-destructive/20"
+                                }
+                              >
+                                {isPresent ? <Check className="h-4 w-4 mr-1" /> : <X className="h-4 w-4 mr-1" />}
+                                {isPresent ? "Present" : "Absent"}
+                              </Button>
+                            </li>
+                          );
+                        })}
+                      </ul>
+                    )
+                  )}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+
         {/* Other Tabs */}
-        {tabItems.filter(t => t.value !== "students").map((tab) => (
+        {tabItems.filter(t => t.value !== "students" && t.value !== "attendance").map((tab) => (
           <TabsContent key={tab.value} value={tab.value}>
             <Card className="border-instructor/20">
               <CardHeader>
