@@ -1,12 +1,14 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
-import { ArrowLeft, Users, UserCheck, FileText, ClipboardList, FolderKanban, GraduationCap, Loader2, Plus, CalendarDays, Check, X, BarChart3 } from "lucide-react";
+import { ArrowLeft, Users, UserCheck, FileText, ClipboardList, FolderKanban, GraduationCap, Loader2, Plus, CalendarDays, Check, X, BarChart3, Upload, Download, Trash2 } from "lucide-react";
 
 interface SubjectData {
   id: string;
@@ -29,6 +31,15 @@ interface EnrolledStudent {
 interface AttendanceSession {
   id: string;
   session_date: string;
+  created_at: string;
+}
+
+interface Assignment {
+  id: string;
+  title: string;
+  description: string | null;
+  file_url: string | null;
+  file_name: string | null;
   created_at: string;
 }
 
@@ -55,6 +66,14 @@ export default function InstructorSubject() {
   const [creatingSession, setCreatingSession] = useState(false);
   const [summaryData, setSummaryData] = useState<Record<string, { present: number; absent: number; total: number }>>({});
   const [summaryLoading, setSummaryLoading] = useState(false);
+  const [assignments, setAssignments] = useState<Assignment[]>([]);
+  const [assignmentsLoading, setAssignmentsLoading] = useState(false);
+  const [showAssignmentForm, setShowAssignmentForm] = useState(false);
+  const [assignmentTitle, setAssignmentTitle] = useState("");
+  const [assignmentDescription, setAssignmentDescription] = useState("");
+  const [assignmentFile, setAssignmentFile] = useState<File | null>(null);
+  const [uploadingAssignment, setUploadingAssignment] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (subjectId && user) {
@@ -218,6 +237,75 @@ export default function InstructorSubject() {
     setSummaryLoading(false);
   };
 
+  const loadAssignments = async () => {
+    if (!subjectId) return;
+    setAssignmentsLoading(true);
+    const { data } = await supabase
+      .from("assignments")
+      .select("*")
+      .eq("subject_id", subjectId)
+      .order("created_at", { ascending: false });
+    setAssignments((data as Assignment[]) || []);
+    setAssignmentsLoading(false);
+  };
+
+  const uploadAssignment = async () => {
+    if (!subjectId || !assignmentTitle.trim()) return;
+    setUploadingAssignment(true);
+
+    let fileUrl: string | null = null;
+    let fileName: string | null = null;
+
+    if (assignmentFile) {
+      const ext = assignmentFile.name.split(".").pop();
+      const path = `${subjectId}/${Date.now()}.${ext}`;
+      const { error: uploadError } = await supabase.storage
+        .from("assignments")
+        .upload(path, assignmentFile);
+      if (uploadError) {
+        toast({ title: "Upload failed", description: uploadError.message, variant: "destructive" });
+        setUploadingAssignment(false);
+        return;
+      }
+      const { data: urlData } = supabase.storage.from("assignments").getPublicUrl(path);
+      fileUrl = urlData.publicUrl;
+      fileName = assignmentFile.name;
+    }
+
+    const { data, error } = await supabase
+      .from("assignments")
+      .insert({ subject_id: subjectId, title: assignmentTitle.trim(), description: assignmentDescription.trim() || null, file_url: fileUrl, file_name: fileName })
+      .select("*")
+      .single();
+
+    if (error) {
+      toast({ title: "Error", description: error.message, variant: "destructive" });
+    } else if (data) {
+      setAssignments((prev) => [(data as Assignment), ...prev]);
+      setAssignmentTitle("");
+      setAssignmentDescription("");
+      setAssignmentFile(null);
+      setShowAssignmentForm(false);
+      if (fileInputRef.current) fileInputRef.current.value = "";
+      toast({ title: "Assignment created", description: `"${(data as Assignment).title}" has been uploaded.` });
+    }
+    setUploadingAssignment(false);
+  };
+
+  const deleteAssignment = async (assignment: Assignment) => {
+    if (assignment.file_url) {
+      const path = assignment.file_url.split("/assignments/")[1];
+      if (path) await supabase.storage.from("assignments").remove([path]);
+    }
+    const { error } = await supabase.from("assignments").delete().eq("id", assignment.id);
+    if (error) {
+      toast({ title: "Error", description: error.message, variant: "destructive" });
+    } else {
+      setAssignments((prev) => prev.filter((a) => a.id !== assignment.id));
+      toast({ title: "Deleted", description: "Assignment removed." });
+    }
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center py-20">
@@ -268,7 +356,7 @@ export default function InstructorSubject() {
       </div>
 
       {/* Tabbed Content */}
-      <Tabs defaultValue="students" className="w-full" onValueChange={(val) => { if (val === "attendance") loadSessions(); }}>
+      <Tabs defaultValue="students" className="w-full" onValueChange={(val) => { if (val === "attendance") loadSessions(); if (val === "assignments") loadAssignments(); }}>
         <TabsList className="w-full justify-start bg-muted/50 border border-border">
           {tabItems.map((tab) => (
             <TabsTrigger
@@ -485,8 +573,117 @@ export default function InstructorSubject() {
           </Card>
         </TabsContent>
 
+        {/* Assignments Tab */}
+        <TabsContent value="assignments">
+          <Card className="border-green-600/20">
+            <CardHeader className="flex flex-row items-center justify-between">
+              <div>
+                <CardTitle className="text-foreground">Assignments</CardTitle>
+                <CardDescription>Create and manage assignments for this subject.</CardDescription>
+              </div>
+              <Button
+                onClick={() => setShowAssignmentForm(!showAssignmentForm)}
+                className="bg-green-600 hover:bg-green-700 text-white"
+                size="sm"
+              >
+                <Plus className="h-4 w-4" />
+                <span className="ml-1 hidden sm:inline">New Assignment</span>
+              </Button>
+            </CardHeader>
+            <CardContent>
+              {showAssignmentForm && (
+                <div className="mb-6 p-4 rounded-lg border border-green-600/20 bg-green-600/5 space-y-3">
+                  <Input
+                    placeholder="Assignment title"
+                    value={assignmentTitle}
+                    onChange={(e) => setAssignmentTitle(e.target.value)}
+                    className="border-green-600/30 focus-visible:ring-green-600"
+                  />
+                  <Textarea
+                    placeholder="Description (optional)"
+                    value={assignmentDescription}
+                    onChange={(e) => setAssignmentDescription(e.target.value)}
+                    className="border-green-600/30 focus-visible:ring-green-600"
+                    rows={3}
+                  />
+                  <div className="flex items-center gap-3">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => fileInputRef.current?.click()}
+                      className="border-green-600/30 text-green-600 hover:bg-green-600/10"
+                    >
+                      <Upload className="h-4 w-4 mr-1" />
+                      {assignmentFile ? assignmentFile.name : "Attach File"}
+                    </Button>
+                    <input
+                      ref={fileInputRef}
+                      type="file"
+                      className="hidden"
+                      onChange={(e) => setAssignmentFile(e.target.files?.[0] || null)}
+                    />
+                  </div>
+                  <div className="flex gap-2 pt-1">
+                    <Button
+                      onClick={uploadAssignment}
+                      disabled={!assignmentTitle.trim() || uploadingAssignment}
+                      className="bg-green-600 hover:bg-green-700 text-white"
+                      size="sm"
+                    >
+                      {uploadingAssignment ? <Loader2 className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />}
+                      <span className="ml-1">Save</span>
+                    </Button>
+                    <Button variant="outline" size="sm" onClick={() => { setShowAssignmentForm(false); setAssignmentTitle(""); setAssignmentDescription(""); setAssignmentFile(null); }}>
+                      Cancel
+                    </Button>
+                  </div>
+                </div>
+              )}
+
+              {assignmentsLoading ? (
+                <div className="flex justify-center py-10">
+                  <Loader2 className="h-6 w-6 animate-spin text-green-600" />
+                </div>
+              ) : assignments.length === 0 ? (
+                <div className="flex flex-col items-center justify-center py-10 text-center">
+                  <FileText className="h-10 w-10 text-muted-foreground mb-3" />
+                  <p className="text-muted-foreground">No assignments created yet.</p>
+                  <p className="text-xs text-muted-foreground mt-1">Click "New Assignment" to upload one.</p>
+                </div>
+              ) : (
+                <ul className="divide-y divide-border space-y-0">
+                  {assignments.map((a) => (
+                    <li key={a.id} className="py-4 first:pt-0">
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="flex-1 min-w-0">
+                          <h4 className="text-sm font-semibold text-foreground">{a.title}</h4>
+                          {a.description && <p className="text-xs text-muted-foreground mt-1">{a.description}</p>}
+                          <div className="flex items-center gap-3 mt-2">
+                            <span className="text-xs text-muted-foreground">
+                              {new Date(a.created_at).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
+                            </span>
+                            {a.file_url && (
+                              <a href={a.file_url} target="_blank" rel="noopener noreferrer" className="inline-flex items-center text-xs text-green-600 hover:underline">
+                                <Download className="h-3 w-3 mr-1" />
+                                {a.file_name || "Download"}
+                              </a>
+                            )}
+                          </div>
+                        </div>
+                        <Button variant="ghost" size="icon" onClick={() => deleteAssignment(a)} className="text-muted-foreground hover:text-destructive shrink-0">
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+
         {/* Other Tabs */}
-        {tabItems.filter(t => t.value !== "students" && t.value !== "attendance").map((tab) => (
+        {tabItems.filter(t => t.value !== "students" && t.value !== "attendance" && t.value !== "assignments").map((tab) => (
           <TabsContent key={tab.value} value={tab.value}>
             <Card className="border-instructor/20">
               <CardHeader>
