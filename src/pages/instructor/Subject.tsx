@@ -6,7 +6,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
-import { ArrowLeft, Users, UserCheck, FileText, ClipboardList, FolderKanban, GraduationCap, Loader2, Plus, CalendarDays, Check, X } from "lucide-react";
+import { ArrowLeft, Users, UserCheck, FileText, ClipboardList, FolderKanban, GraduationCap, Loader2, Plus, CalendarDays, Check, X, BarChart3 } from "lucide-react";
 
 interface SubjectData {
   id: string;
@@ -53,6 +53,8 @@ export default function InstructorSubject() {
   const [attendanceLoading, setAttendanceLoading] = useState(false);
   const [savingAttendance, setSavingAttendance] = useState(false);
   const [creatingSession, setCreatingSession] = useState(false);
+  const [summaryData, setSummaryData] = useState<Record<string, { present: number; absent: number; total: number }>>({});
+  const [summaryLoading, setSummaryLoading] = useState(false);
 
   useEffect(() => {
     if (subjectId && user) {
@@ -194,6 +196,26 @@ export default function InstructorSubject() {
       toast({ title: "Error", description: "Failed to update attendance.", variant: "destructive" });
     }
     setSavingAttendance(false);
+  };
+
+  const loadSummary = async () => {
+    if (!subjectId || sessions.length === 0) return;
+    setSummaryLoading(true);
+    const sessionIds = sessions.map((s) => s.id);
+    const { data } = await supabase
+      .from("attendance_records")
+      .select("student_id, status")
+      .in("session_id", sessionIds);
+    const map: Record<string, { present: number; absent: number; total: number }> = {};
+    students.forEach((s) => { map[s.student_id] = { present: 0, absent: 0, total: sessions.length }; });
+    (data || []).forEach((r: any) => {
+      if (map[r.student_id]) {
+        if (r.status === "present") map[r.student_id].present++;
+        else map[r.student_id].absent++;
+      }
+    });
+    setSummaryData(map);
+    setSummaryLoading(false);
   };
 
   if (loading) {
@@ -401,6 +423,61 @@ export default function InstructorSubject() {
                         })}
                       </ul>
                     )
+                  )}
+                  {/* Attendance Summary */}
+                  {sessions.length > 0 && (
+                    <div className="pt-4 border-t border-border">
+                      <div className="flex items-center justify-between mb-3">
+                        <h3 className="text-sm font-semibold text-foreground flex items-center gap-2">
+                          <BarChart3 className="h-4 w-4 text-instructor" />
+                          Attendance Summary
+                        </h3>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={loadSummary}
+                          className="border-instructor/30 text-instructor hover:bg-instructor/10"
+                        >
+                          {summaryLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : "Load Summary"}
+                        </Button>
+                      </div>
+                      {Object.keys(summaryData).length > 0 && (
+                        <div className="rounded-lg border border-border overflow-hidden">
+                          <table className="w-full text-sm">
+                            <thead>
+                              <tr className="bg-muted/50">
+                                <th className="text-left px-4 py-2 font-medium text-muted-foreground">#</th>
+                                <th className="text-left px-4 py-2 font-medium text-muted-foreground">Student</th>
+                                <th className="text-center px-4 py-2 font-medium text-green-600">Present</th>
+                                <th className="text-center px-4 py-2 font-medium text-destructive">Absent</th>
+                                <th className="text-center px-4 py-2 font-medium text-muted-foreground">Rate</th>
+                              </tr>
+                            </thead>
+                            <tbody className="divide-y divide-border">
+                              {students.map((s, i) => {
+                                const d = summaryData[s.student_id] || { present: 0, absent: 0, total: sessions.length };
+                                const rate = d.total > 0 ? Math.round((d.present / d.total) * 100) : 0;
+                                return (
+                                  <tr key={s.student_id} className="hover:bg-muted/30">
+                                    <td className="px-4 py-2 text-muted-foreground">{i + 1}</td>
+                                    <td className="px-4 py-2 font-medium text-foreground">{s.full_name || "Unnamed Student"}</td>
+                                    <td className="px-4 py-2 text-center">
+                                      <span className="inline-flex items-center justify-center min-w-[2rem] rounded-full bg-green-600/10 text-green-600 text-xs font-semibold px-2 py-0.5">{d.present}</span>
+                                    </td>
+                                    <td className="px-4 py-2 text-center">
+                                      <span className="inline-flex items-center justify-center min-w-[2rem] rounded-full bg-destructive/10 text-destructive text-xs font-semibold px-2 py-0.5">{d.absent}</span>
+                                    </td>
+                                    <td className="px-4 py-2 text-center">
+                                      <span className={`text-xs font-semibold ${rate >= 75 ? "text-green-600" : rate >= 50 ? "text-yellow-600" : "text-destructive"}`}>{rate}%</span>
+                                    </td>
+                                  </tr>
+                                );
+                              })}
+                            </tbody>
+                          </table>
+                        </div>
+                      )}
+                    </div>
                   )}
                 </div>
               )}
