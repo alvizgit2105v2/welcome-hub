@@ -14,6 +14,44 @@ export type Database = {
   }
   public: {
     Tables: {
+      assignments: {
+        Row: {
+          created_at: string
+          description: string | null
+          file_name: string | null
+          file_url: string | null
+          id: string
+          subject_id: string
+          title: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          file_name?: string | null
+          file_url?: string | null
+          id?: string
+          subject_id: string
+          title: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          file_name?: string | null
+          file_url?: string | null
+          id?: string
+          subject_id?: string
+          title?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "assignments_subject_id_fkey"
+            columns: ["subject_id"]
+            isOneToOne: false
+            referencedRelation: "subjects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       attendance_records: {
         Row: {
           id: string
