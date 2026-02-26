@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { BookOpen, Loader2 } from "lucide-react";
+import { BookOpen, Loader2, ArrowRight } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 
 interface EnrolledSubject {
@@ -45,17 +45,19 @@ export default function StudentSubjects() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 animate-fade-in">
       <div>
-        <h1 className="font-display text-3xl font-bold tracking-tight text-foreground">My Subjects</h1>
-        <p className="mt-2 text-muted-foreground">View all your enrolled subjects.</p>
+        <h1 className="font-display text-3xl font-extrabold tracking-tight text-foreground">My Subjects</h1>
+        <p className="mt-1.5 text-sm text-muted-foreground">View all your enrolled subjects.</p>
       </div>
 
       {enrollments.length === 0 ? (
-        <Card className="border-dashed border-student/20">
-          <CardContent className="flex flex-col items-center justify-center py-10 text-center">
-            <BookOpen className="h-10 w-10 text-muted-foreground mb-3" />
-            <p className="text-muted-foreground">No subjects enrolled yet.</p>
+        <Card className="border-dashed border-2 border-border shadow-none">
+          <CardContent className="flex flex-col items-center justify-center py-12 text-center">
+            <div className="rounded-xl bg-muted p-4 mb-4">
+              <BookOpen className="h-8 w-8 text-muted-foreground" />
+            </div>
+            <p className="text-sm font-medium text-foreground">No subjects enrolled yet</p>
             <p className="text-xs text-muted-foreground mt-1">Go to the Dashboard to enroll using a subject code.</p>
           </CardContent>
         </Card>
@@ -64,20 +66,23 @@ export default function StudentSubjects() {
           {enrollments.map((enrollment) => (
             <Card
               key={enrollment.id}
-              className="border-student/20 hover:border-student/40 transition-all cursor-pointer hover:shadow-md hover:shadow-student/5"
+              className="shadow-card border-border/50 hover:shadow-elevated transition-all cursor-pointer group"
               onClick={() => navigate(`/student/subject/${enrollment.subject_id}`)}
             >
               <CardHeader className="pb-2">
-                <span className="text-xs font-mono font-semibold text-student bg-student/10 px-2 py-0.5 rounded w-fit">
-                  {enrollment.subjects.subject_code}
-                </span>
-                <CardTitle className="text-lg text-foreground mt-2">{enrollment.subjects.name}</CardTitle>
+                <div className="flex items-center justify-between">
+                  <span className="text-[10px] font-mono font-bold text-student bg-student/10 px-2 py-1 rounded-md uppercase tracking-wider">
+                    {enrollment.subjects.subject_code}
+                  </span>
+                  <ArrowRight className="h-4 w-4 text-muted-foreground group-hover:text-student group-hover:translate-x-0.5 transition-all" />
+                </div>
+                <CardTitle className="text-base text-foreground mt-2 font-display">{enrollment.subjects.name}</CardTitle>
               </CardHeader>
               <CardContent>
-                <p className="text-sm text-muted-foreground line-clamp-2">
+                <p className="text-xs text-muted-foreground line-clamp-2">
                   {enrollment.subjects.description || "No description provided."}
                 </p>
-                <p className="text-xs text-muted-foreground mt-3">
+                <p className="text-[10px] text-muted-foreground mt-3">
                   Enrolled {new Date(enrollment.enrolled_at).toLocaleDateString()}
                 </p>
               </CardContent>
