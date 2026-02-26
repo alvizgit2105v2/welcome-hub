@@ -5,6 +5,8 @@ import { useAuth } from "@/contexts/AuthContext";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { ArrowLeft, ClipboardCheck, FileText, HelpCircle, FolderKanban, GraduationCap, Loader2 } from "lucide-react";
 
 interface SubjectData {
@@ -14,12 +16,19 @@ interface SubjectData {
   description: string | null;
 }
 
+interface AttendanceRow {
+  session_date: string;
+  status: string;
+}
+
 export default function StudentSubject() {
   const { subjectId } = useParams<{ subjectId: string }>();
   const { user } = useAuth();
   const navigate = useNavigate();
   const [subject, setSubject] = useState<SubjectData | null>(null);
   const [loading, setLoading] = useState(true);
+  const [attendanceHistory, setAttendanceHistory] = useState<AttendanceRow[]>([]);
+  const [attendanceLoading, setAttendanceLoading] = useState(false);
 
   useEffect(() => {
     if (!user || !subjectId) return;
@@ -29,10 +38,49 @@ export default function StudentSubject() {
       .select("id, subject_code, name, description")
       .eq("id", subjectId)
       .single()
-      .then(({ data, error }) => {
+      .then(({ data }) => {
         if (data) setSubject(data);
         setLoading(false);
       });
+  }, [user, subjectId]);
+
+  useEffect(() => {
+    if (!user || !subjectId) return;
+    setAttendanceLoading(true);
+
+    // Get all sessions for this subject, then get student's records
+    const loadAttendance = async () => {
+      const { data: sessions } = await supabase
+        .from("attendance_sessions")
+        .select("id, session_date")
+        .eq("subject_id", subjectId)
+        .order("session_date", { ascending: true });
+
+      if (!sessions || sessions.length === 0) {
+        setAttendanceHistory([]);
+        setAttendanceLoading(false);
+        return;
+      }
+
+      const sessionIds = sessions.map((s) => s.id);
+      const { data: records } = await supabase
+        .from("attendance_records")
+        .select("session_id, status")
+        .eq("student_id", user.id)
+        .in("session_id", sessionIds);
+
+      const recordMap = new Map(records?.map((r) => [r.session_id, r.status]) ?? []);
+
+      const history: AttendanceRow[] = sessions.map((s) => ({
+        session_date: s.session_date,
+        status: recordMap.get(s.id) ?? "No Record",
+      }));
+
+      setAttendanceHistory(history);
+      setAttendanceLoading(false);
+    };
+
+    loadAttendance();
   }, [user, subjectId]);
 
   if (loading) {
@@ -107,15 +155,69 @@ export default function StudentSubject() {
         <TabsContent value="attendance">
           <Card className="border-student/20">
             <CardHeader>
-              <CardTitle className="text-foreground">Attendance Records</CardTitle>
-              <CardDescription>View your attendance history and mark presence when allowed.</CardDescription>
+              <CardTitle className="text-foreground">Attendance Summary</CardTitle>
+              <CardDescription>Your attendance history for this subject.</CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="flex flex-col items-center justify-center py-10 text-center">
-                <ClipboardCheck className="h-10 w-10 text-muted-foreground mb-3" />
-                <p className="text-muted-foreground">No attendance records yet.</p>
-                <p className="text-xs text-muted-foreground mt-1">Records will appear here once your instructor starts tracking attendance.</p>
-              </div>
+              {attendanceLoading ? (
+                <div className="flex items-center justify-center py-10">
+                  <Loader2 className="h-6 w-6 animate-spin text-student" />
+                </div>
+              ) : attendanceHistory.length === 0 ? (
+                <div className="flex flex-col items-center justify-center py-10 text-center">
+                  <ClipboardCheck className="h-10 w-10 text-muted-foreground mb-3" />
+                  <p className="text-muted-foreground">No attendance records yet.</p>
+                  <p className="text-xs text-muted-foreground mt-1">Records will appear here once your instructor starts tracking attendance.</p>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  {/* Summary counts */}
+                  {(() => {
+                    const present = attendanceHistory.filter((a) => a.status === "present").length;
+                    const absent = attendanceHistory.filter((a) => a.status === "absent").length;
+                    const total = attendanceHistory.length;
+                    const rate = total > 0 ? Math.round((present / total) * 100) : 0;
+                    return (
+                      <div className="flex gap-4 flex-wrap">
+                        <div className="bg-green-50 dark:bg-green-950/30 border border-green-200 dark:border-green-800 rounded-lg px-4 py-3 text-center min-w-[100px]">
+                          <p className="text-2xl font-bold text-green-600">{present}</p>
+                          <p className="text-xs text-green-700 dark:text-green-400">Present</p>
+                        </div>
+                        <div className="bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-800 rounded-lg px-4 py-3 text-center min-w-[100px]">
+                          <p className="text-2xl font-bold text-red-600">{absent}</p>
+                          <p className="text-xs text-red-700 dark:text-red-400">Absent</p>
+                        </div>
+                        <div className="bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800 rounded-lg px-4 py-3 text-center min-w-[100px]">
+                          <p className={`text-2xl font-bold ${rate >= 75 ? "text-green-600" : rate >= 50 ? "text-yellow-600" : "text-red-600"}`}>{rate}%</p>
+                          <p className="text-xs text-blue-700 dark:text-blue-400">Rate</p>
+                        </div>
+                      </div>
+                    );
+                  })()}
+
+                  {/* History table */}
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Date</TableHead>
+                        <TableHead>Status</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {attendanceHistory.map((row, i) => (
+                        <TableRow key={i}>
+                          <TableCell className="font-medium">{row.session_date}</TableCell>
+                          <TableCell>
+                            <Badge variant={row.status === "present" ? "default" : "destructive"} className={row.status === "present" ? "bg-green-600" : ""}>
+                              {row.status.charAt(0).toUpperCase() + row.status.slice(1)}
+                            </Badge>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+              )}
             </CardContent>
           </Card>
         </TabsContent>
