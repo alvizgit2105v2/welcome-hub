@@ -5,6 +5,8 @@ import { useAuth } from "@/contexts/AuthContext";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { ArrowLeft, ClipboardCheck, FileText, HelpCircle, FolderKanban, GraduationCap, Loader2 } from "lucide-react";
 
 interface SubjectData {
@@ -14,12 +16,19 @@ interface SubjectData {
   description: string | null;
 }
 
+interface AttendanceRow {
+  session_date: string;
+  status: string;
+}
+
 export default function StudentSubject() {
   const { subjectId } = useParams<{ subjectId: string }>();
   const { user } = useAuth();
   const navigate = useNavigate();
   const [subject, setSubject] = useState<SubjectData | null>(null);
   const [loading, setLoading] = useState(true);
+  const [attendanceHistory, setAttendanceHistory] = useState<AttendanceRow[]>([]);
+  const [attendanceLoading, setAttendanceLoading] = useState(false);
 
   useEffect(() => {
     if (!user || !subjectId) return;
@@ -29,10 +38,49 @@ export default function StudentSubject() {
       .select("id, subject_code, name, description")
       .eq("id", subjectId)
       .single()
-      .then(({ data, error }) => {
+      .then(({ data }) => {
         if (data) setSubject(data);
         setLoading(false);
       });
+  }, [user, subjectId]);
+
+  useEffect(() => {
+    if (!user || !subjectId) return;
+    setAttendanceLoading(true);
+
+    // Get all sessions for this subject, then get student's records
+    const loadAttendance = async () => {
+      const { data: sessions } = await supabase
+        .from("attendance_sessions")
+        .select("id, session_date")
+        .eq("subject_id", subjectId)
+        .order("session_date", { ascending: true });
+
+      if (!sessions || sessions.length === 0) {
+        setAttendanceHistory([]);
+        setAttendanceLoading(false);
+        return;
+      }
+
+      const sessionIds = sessions.map((s) => s.id);
+      const { data: records } = await supabase
+        .from("attendance_records")
+        .select("session_id, status")
+        .eq("student_id", user.id)
+        .in("session_id", sessionIds);
+
+      const recordMap = new Map(records?.map((r) => [r.session_id, r.status]) ?? []);
+
+      const history: AttendanceRow[] = sessions.map((s) => ({
+        session_date: s.session_date,
+        status: recordMap.get(s.id) ?? "No Record",
+      }));
+
+      setAttendanceHistory(history);
+      setAttendanceLoading(false);
+    };
+
+    loadAttendance();
   }, [user, subjectId]);
 
   if (loading) {
