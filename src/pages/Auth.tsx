@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useNavigate, useSearchParams } from "react-router-dom";
-import { GraduationCap, Presentation, Mail, Lock, User, ArrowLeft, Eye, EyeOff } from "lucide-react";
+import { GraduationCap, Presentation, Mail, Lock, User, ArrowLeft, Eye, EyeOff, BookOpen } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -16,8 +16,7 @@ const roleConfig = {
     accent: "student",
     btnClass: "bg-student text-student-foreground hover:bg-student/90",
     inputRing: "focus-visible:ring-student",
-    glowClass: "glow-student",
-    borderClass: "border-student/30",
+    borderClass: "border-student/20",
   },
   instructor: {
     icon: Presentation,
@@ -25,8 +24,7 @@ const roleConfig = {
     accent: "instructor",
     btnClass: "bg-instructor text-instructor-foreground hover:bg-instructor/90",
     inputRing: "focus-visible:ring-instructor",
-    glowClass: "glow-instructor",
-    borderClass: "border-instructor/30",
+    borderClass: "border-instructor/20",
   },
 };
 
@@ -50,13 +48,8 @@ const Auth = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    // Validate password confirmation for signup
     if (mode === "signup" && password !== confirmPassword) {
-      toast({
-        title: "Password mismatch",
-        description: "Passwords do not match. Please try again.",
-        variant: "destructive",
-      });
+      toast({ title: "Password mismatch", description: "Passwords do not match.", variant: "destructive" });
       return;
     }
 
@@ -78,10 +71,7 @@ const Auth = () => {
           if (profileError) throw profileError;
         }
 
-        toast({
-          title: "Account created!",
-          description: "Check your email to verify your account.",
-        });
+        toast({ title: "Account created!", description: "Check your email to verify your account." });
         navigate(role === "instructor" ? "/instructor" : "/student");
       } else {
         const { error } = await supabase.auth.signInWithPassword({ email, password });
@@ -89,11 +79,7 @@ const Auth = () => {
         navigate(role === "instructor" ? "/instructor" : "/student");
       }
     } catch (error: any) {
-      toast({
-        title: "Error",
-        description: error.message,
-        variant: "destructive",
-      });
+      toast({ title: "Error", description: error.message, variant: "destructive" });
     } finally {
       setLoading(false);
     }
@@ -104,24 +90,24 @@ const Auth = () => {
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.5 }}
+        transition={{ duration: 0.4 }}
         className="w-full max-w-md"
       >
         {/* Back button */}
         <button
           onClick={() => navigate("/")}
-          className="mb-6 flex items-center gap-2 text-sm text-muted-foreground transition-colors hover:text-foreground"
+          className="mb-6 flex items-center gap-2 text-sm text-muted-foreground transition-colors hover:text-foreground group"
         >
-          <ArrowLeft className="h-4 w-4" />
+          <ArrowLeft className="h-4 w-4 group-hover:-translate-x-0.5 transition-transform" />
           Back to role selection
         </button>
 
         {/* Card */}
-        <div className={`rounded-2xl border bg-card p-8 ${config.borderClass} ${config.glowClass}`}>
+        <div className={`rounded-2xl border bg-card p-8 shadow-elevated ${config.borderClass}`}>
           {/* Header */}
           <div className="mb-8 flex flex-col items-center gap-3">
-            <div className={`rounded-2xl p-3 bg-${config.accent}/10`}>
-              <Icon className={`h-8 w-8 text-${config.accent}`} strokeWidth={1.5} />
+            <div className={`rounded-xl p-3 bg-${config.accent}/10`}>
+              <Icon className={`h-7 w-7 text-${config.accent}`} strokeWidth={1.5} />
             </div>
             <div className="text-center">
               <h1 className="font-display text-2xl font-bold tracking-tight text-foreground">
@@ -129,8 +115,8 @@ const Auth = () => {
               </h1>
               <p className="mt-1 text-sm text-muted-foreground">
                 {mode === "signin"
-                  ? `Sign in as ${config.label}`
-                  : `Sign up as ${config.label}`}
+                  ? `Sign in to your ${config.label.toLowerCase()} account`
+                  : `Get started as a ${config.label.toLowerCase()}`}
               </p>
             </div>
           </div>
@@ -239,7 +225,6 @@ const Auth = () => {
             <button
               onClick={() => {
                 setMode(mode === "signin" ? "signup" : "signin");
-                // Clear confirm password when switching modes
                 setConfirmPassword("");
               }}
               className={`font-medium text-${config.accent} underline-offset-4 hover:underline`}
@@ -247,6 +232,12 @@ const Auth = () => {
               {mode === "signin" ? "Sign up" : "Sign in"}
             </button>
           </p>
+        </div>
+
+        {/* Brand footer */}
+        <div className="mt-6 flex items-center justify-center gap-2 text-xs text-muted-foreground">
+          <BookOpen className="h-3.5 w-3.5" />
+          LearnPath Platform
         </div>
       </motion.div>
     </div>
